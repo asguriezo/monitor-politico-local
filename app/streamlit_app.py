@@ -4,14 +4,14 @@ import pandas as pd
 import os
 
 # =========================
-# 📁 RUTAS ROBUSTAS
+# 📁 RUTAS
 # =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db/database.db"))
 SCHEMA_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db/schema.sql"))
 
 # =========================
-# 🗄️ CREAR BD SI NO EXISTE
+# 🗄️ INIT DB
 # =========================
 def init_db():
     if not os.path.exists(DB_PATH):
@@ -30,7 +30,7 @@ init_db()
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 
 # =========================
-# 🧪 DEBUG (opcional)
+# 🧪 DEBUG
 # =========================
 with st.expander("🔍 Debug"):
     st.write("Directorio actual:", os.getcwd())
@@ -49,11 +49,11 @@ query = st.text_input("Buscar en texto")
 
 tipo_filter = st.selectbox(
     "Tipo de documento",
-    ["Todos", "acta", "decreto", "presupuesto"]
+    ["Todos", "acta", "decreto", "presupuesto", "otro"]
 )
 
 # =========================
-# 📊 CARGAR DATOS
+# 📊 CARGAR DOCUMENTOS
 # =========================
 df = pd.read_sql_query("SELECT * FROM documents", conn)
 
@@ -95,25 +95,90 @@ if doc_id:
         st.write(d["resumen"])
 
         st.markdown("### 📜 Texto")
-        st.text(d["texto"][:2000])  # limitamos para no romper la app
+        st.text(d["texto"][:2000])
     else:
         st.warning("Documento no encontrado")
 
 # =========================
-# 📊 DASHBOARD BÁSICO
+# 📊 DASHBOARD GENERAL
 # =========================
 st.subheader("📈 Estadísticas")
 
 if not df.empty:
 
-    # documentos por tipo
     tipo_counts = df["tipo"].value_counts()
     st.bar_chart(tipo_counts)
 
-    # documentos por año
     if "anio" in df.columns:
         anio_counts = df["anio"].value_counts().sort_index()
         st.line_chart(anio_counts)
 
 else:
     st.info("No hay datos aún")
+
+# =========================
+# 💰 DASHBOARD ECONÓMICO
+# =========================
+st.subheader("💰 Análisis económico")
+
+try:
+    importes_df = pd.read_sql_query("""
+        SELECT d.id, d.titulo, i.valor
+        FROM importes i
+        JOIN documents d ON d.id = i.document_id
+    """, conn)
+
+    if not importes_df.empty:
+
+        # limpiar valores
+        importes_df["valor_num"] = (
+            importes_df["valor"]
+            .str.replace("€", "", regex=False)
+            .str.replace(".", "", regex=False)
+            .str.replace(",", ".", regex=False)
+            .astype(float)
+        )
+
+        # total €
+        total = importes_df["valor_num"].sum()
+        st.metric("💰 Total detectado (€)", f"{total:,.2f}")
+
+        # top documentos por importe
+        st.markdown("### 📊 Top documentos por importe")
+
+        por_doc = (
+            importes_df
+            .groupby("titulo")["valor_num"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+
+        st.bar_chart(por_doc.head(10))
+
+    else:
+        st.info("No hay importes detectados aún")
+
+except Exception as e:
+    st.warning("⚠️ Tabla importes no disponible o error en datos")
+
+# =========================
+# 🏢 EMPRESAS
+# =========================
+st.subheader("🏢 Empresas")
+
+try:
+    empresas_df = pd.read_sql_query("""
+        SELECT nombre, COUNT(*) as total
+        FROM entities
+        WHERE tipo='empresa'
+        GROUP BY nombre
+        ORDER BY total DESC
+    """, conn)
+
+    if not empresas_df.empty:
+        st.bar_chart(empresas_df.set_index("nombre"))
+    else:
+        st.info("No hay empresas detectadas")
+
+except Exception as e:
+    st.warning("⚠️ Error cargando empresas")
