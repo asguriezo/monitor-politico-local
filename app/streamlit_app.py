@@ -51,11 +51,20 @@ tipo_filter = st.selectbox(
     "Tipo de documento",
     ["Todos", "acta", "decreto", "presupuesto", "otro"]
 )
+nivel_riesgo = st.selectbox(
+    "Nivel de riesgo",
+    ["Todos", "alto", "medio", "bajo"]
+)
 
 # =========================
 # 📊 CARGAR DOCUMENTOS
 # =========================
-df = pd.read_sql_query("SELECT * FROM documents", conn)
+#df = pd.read_sql_query("SELECT * FROM documents", conn)
+df = pd.read_sql_query("""
+    SELECT d.*, s.score, s.nivel
+    FROM documents d
+    LEFT JOIN document_scores s ON d.id = s.document_id
+""", conn)
 
 # =========================
 # 🔍 FILTRADO
@@ -66,11 +75,34 @@ if query:
 if tipo_filter != "Todos":
     df = df[df["tipo"] == tipo_filter]
 
+if nivel_riesgo != "Todos":
+    df = df[df["nivel"] == nivel_riesgo]
+
 # =========================
 # 📋 TABLA
 # =========================
+#st.subheader("📄 Documentos")
+#st.dataframe(df[["id", "titulo", "tipo", "fecha", "resumen"]])
+
 st.subheader("📄 Documentos")
-st.dataframe(df[["id", "titulo", "tipo", "fecha", "resumen"]])
+
+def color_riesgo(val):
+    if val == "alto":
+        return "background-color: #ffcccc"
+    elif val == "medio":
+        return "background-color: #fff3cd"
+    elif val == "bajo":
+        return "background-color: #d4edda"
+    return ""
+
+st.dataframe(
+    df[["id", "titulo", "tipo", "fecha", "nivel", "score"]]
+    .style.map(color_riesgo, subset=["nivel"])
+)
+
+st.dataframe(df[[
+    "id", "titulo", "tipo", "fecha", "nivel", "score", "resumen"
+]])
 
 # =========================
 # 📄 DETALLE DOCUMENTO
