@@ -288,3 +288,29 @@ try:
 
 except:
     st.warning("Error cargando scoring")
+    
+st.subheader("🧠 Explicación del riesgo")
+
+try:
+    score_df = pd.read_sql_query("""
+        SELECT d.titulo, s.score, s.nivel, s.explicacion
+        FROM document_scores s
+        JOIN documents d ON d.id = s.document_id
+        ORDER BY s.score DESC
+    """, conn)
+
+    if not score_df.empty:
+
+        for _, row in score_df.iterrows():
+            st.markdown(f"""
+### {row['titulo']}
+**Nivel:** {row['nivel']} | **Score:** {row['score']}
+
+🧠 {row['explicacion']}
+""")
+
+    else:
+        st.info("No hay datos de riesgo")
+
+except:
+    st.warning("Error cargando explicaciones")
