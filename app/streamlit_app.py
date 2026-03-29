@@ -182,3 +182,50 @@ try:
 
 except Exception as e:
     st.warning("⚠️ Error cargando empresas")
+    
+st.subheader("💰🏢 Dinero por empresa")
+
+try:
+    cruce_df = pd.read_sql_query("""
+        SELECT e.nombre as empresa, i.valor
+        FROM importes i
+        JOIN entities e ON e.document_id = i.document_id
+        WHERE e.tipo = 'empresa'
+    """, conn)
+
+    if not cruce_df.empty:
+
+        # limpiar importes
+        cruce_df["valor_num"] = (
+            cruce_df["valor"]
+            .str.replace("€", "", regex=False)
+            .str.replace(".", "", regex=False)
+            .str.replace(",", ".", regex=False)
+            .astype(float)
+        )
+
+        # agrupar por empresa
+        por_empresa = (
+            cruce_df
+            .groupby("empresa")["valor_num"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+
+        # 💰 TOP empresas
+        st.markdown("### 🏆 Empresas con más importe")
+
+        st.bar_chart(por_empresa.head(10))
+
+        # tabla detalle
+        st.markdown("### 📋 Detalle")
+
+        st.dataframe(
+            por_empresa.reset_index().rename(columns={"valor_num": "total €"})
+        )
+
+    else:
+        st.info("No hay datos suficientes para cruce")
+
+except Exception as e:
+    st.warning(f"⚠️ Error en cruce: {e}")
