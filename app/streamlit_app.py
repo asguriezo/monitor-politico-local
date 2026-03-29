@@ -3,6 +3,30 @@ import sqlite3
 import pandas as pd
 import os
 
+
+# =========================
+# ⚙️ CONFIG
+# =========================
+st.set_page_config(
+    page_title="Observatorio Guriezo",
+    layout="wide"
+)
+
+# =========================
+# 🔐 LOGIN
+# =========================
+if "logged" not in st.session_state:
+    st.session_state.logged = False
+
+if not st.session_state.logged:
+    password = st.text_input("Password", type="password")
+
+    if password == "guriezan@S":
+        st.session_state.logged = True
+        st.rerun()
+    else:
+        st.stop()
+
 # =========================
 # 📁 RUTAS
 # =========================
