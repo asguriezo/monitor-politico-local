@@ -265,3 +265,26 @@ try:
 
 except:
     st.warning("Error cargando alertas")
+
+
+st.subheader("⚠️ Riesgo por documento")
+
+try:
+    score_df = pd.read_sql_query("""
+        SELECT d.titulo, s.score, s.nivel
+        FROM document_scores s
+        JOIN documents d ON d.id = s.document_id
+        ORDER BY s.score DESC
+    """, conn)
+
+    if not score_df.empty:
+        st.dataframe(score_df)
+
+        # gráfico
+        st.bar_chart(score_df.set_index("titulo")["score"])
+
+    else:
+        st.info("No hay scoring disponible")
+
+except:
+    st.warning("Error cargando scoring")
