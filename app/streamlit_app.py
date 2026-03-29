@@ -247,3 +247,21 @@ try:
 
 except Exception as e:
     st.warning("Error cargando adjudicaciones")
+
+
+st.subheader("⚠️ Alertas")
+
+try:
+    alerts_df = pd.read_sql_query("""
+        SELECT tipo, descripcion, fecha
+        FROM alerts
+        ORDER BY fecha DESC
+    """, conn)
+
+    if not alerts_df.empty:
+        st.dataframe(alerts_df)
+    else:
+        st.info("No hay alertas generadas")
+
+except:
+    st.warning("Error cargando alertas")
