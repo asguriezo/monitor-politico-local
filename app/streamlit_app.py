@@ -229,3 +229,21 @@ try:
 
 except Exception as e:
     st.warning(f"⚠️ Error en cruce: {e}")
+    
+
+st.subheader("📜 Adjudicaciones detectadas")
+
+try:
+    adj_df = pd.read_sql_query("""
+        SELECT d.titulo, a.empresa, a.importe, a.contexto
+        FROM adjudicaciones a
+        JOIN documents d ON d.id = a.document_id
+    """, conn)
+
+    if not adj_df.empty:
+        st.dataframe(adj_df)
+    else:
+        st.info("No hay adjudicaciones detectadas")
+
+except Exception as e:
+    st.warning("Error cargando adjudicaciones")

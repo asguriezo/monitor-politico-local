@@ -109,6 +109,43 @@ def extraer_empresas(texto):
 
     return list(set(empresas))
 
+def extraer_adjudicaciones(texto):
+
+    adjudicaciones = []
+
+    # dividir en frases (simple)
+    frases = re.split(r'\.|\n', texto)
+
+    for frase in frases:
+
+        if any(p in frase.lower() for p in [
+            "adjudica", "adjudicado", "adjudicación", "contrato"
+        ]):
+
+            # detectar empresa
+            empresa_match = re.search(
+                r'([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑ\s]+ (S\.L\.|S\.A\.|SL|SA))',
+                frase
+            )
+
+            # detectar importe
+            importe_match = re.search(
+                r'\d{1,3}(?:\.\d{3})*,\d{2}\s?€|\d+(?:,\d{2})?\s?€',
+                frase
+            )
+
+            empresa = empresa_match.group() if empresa_match else None
+            importe = importe_match.group() if importe_match else None
+
+            if empresa or importe:
+                adjudicaciones.append({
+                    "empresa": empresa,
+                    "importe": importe,
+                    "contexto": frase.strip()
+                })
+
+    return adjudicaciones
+
 
 # =========================
 # 📄 OBTENER DOCUMENTOS
@@ -133,6 +170,7 @@ for doc_id, texto in docs:
     # 🔹 extraer importes primero (sin IA)
     importes_detectados = extraer_importes(texto)
     empresas_detectadas = extraer_empresas(texto)
+    adjs = extraer_adjudicaciones(texto)
 
     prompt = f"""
 Eres un sistema que extrae información estructurada.
@@ -233,6 +271,17 @@ Formato EXACTO:
             INSERT INTO entities (document_id, nombre, tipo)
             VALUES (?, ?, ?)
         """, (doc_id, emp, "empresa"))
+    
+    for adj in adjs:
+        cursor.execute("""
+            INSERT INTO adjudicaciones (document_id, empresa, importe, contexto)
+            VALUES (?, ?, ?, ?)
+        """, (
+            doc_id,
+            adj["empresa"],
+            adj["importe"],
+            adj["contexto"]
+    ))
 
 # =========================
 # ✅ FINALIZAR
